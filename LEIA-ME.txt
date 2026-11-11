@@ -1,0 +1,103 @@
+MASTERIZADOR — como usar
+========================
+
+Ele faz a master de uma mix exportada do Logic (ou de qualquer DAW) — ou das
+STEMS separadas (voz, bateria, baixo...) — e gera um WAV pronto, no volume certo para o destino (streaming, show ou igual a uma
+música de referência). Não mexe na sessão do Logic.
+
+
+1. PREPARAR O MAC (uma vez só)
+------------------------------
+1. Instale o Python: https://www.python.org/downloads/macos/
+   Clique em "Download Python 3.x.x", abra o .pkg e vá em
+   Continuar > Continuar > Concordar > Instalar.
+2. No final abre uma pasta "Python 3.x": dê dois cliques em
+   "Install Certificates.command" (não pule).
+3. Nesta pasta, clique com o BOTÃO DIREITO em "instalar.command" > Abrir > Abrir.
+   Espere aparecer "Pronto!" e aperte Enter.
+
+   Se o macOS não deixar abrir: Ajustes do Sistema > Privacidade e Segurança,
+   role até o fim e clique em "Abrir Mesmo Assim".
+
+
+2. EXPORTAR A MIX DO LOGIC
+--------------------------
+1. Desligue limiter/plugins de master no canal Stereo Out.
+2. File > Bounce > Project or Section... (⌘B)
+   - Destination: PCM
+   - File Format: WAVE (AIFF também serve)
+   - Resolution: 24 Bit
+   - Sample Rate: a do projeto
+   - Normalize: OFF
+   - Mode: Offline
+3. Se o medidor do Stereo Out ficar vermelho, abaixe o fader dele e exporte de novo.
+
+OU EXPORTAR AS STEMS (para poder mexer no volume de cada uma no masterizador)
+1. Mesmo cuidado: nada de limiter no Stereo Out.
+2. File > Export > All Tracks as Audio Files... (⇧⌘E)
+   - Save Format: WAVE, Bit Depth: 24 Bit
+   - Normalize: OFF
+   - "Include Volume/Pan Automation": LIGADO (para sair igual à mix)
+   - "Bypass Effect Plug-ins": DESLIGADO
+   Cada faixa vira um arquivo, todos começando no mesmo ponto.
+3. Muitas faixas? Junte antes em grupos (voz, bateria, baixo, resto) com
+   Track > Create Track Stack > Summing Stack, e exporte cada grupo com
+   File > Bounce > Project or Section, com o grupo em solo.
+4. Coloque todas as stems numa pasta só. Dê nomes começando igual
+   (ex.: "Musica - Voz", "Musica - Baixo"): o master sai como "Musica_master.wav".
+
+
+3. MASTERIZAR
+-------------
+1. Dois cliques em "masterizar.command" (na 1ª vez: botão direito > Abrir).
+2. "ABRIR MIX / STEMS": 1 arquivo (a mix pronta) ou VÁRIOS de uma vez
+   (segure ⌘ ou Shift) para as stems.
+3. Ajuste os módulos (tudo é opcional; o padrão já funciona). Os KNOBS giram
+   arrastando para cima/baixo (Shift = ajuste fino), com a roda do mouse, e
+   duplo clique volta ao padrão. Pare o mouse em cima de algo para ver a ajuda.
+   O botão "ON" de cada módulo liga/desliga (bypass) o módulo inteiro.
+
+   DESTINO     STREAM -14, SHOW -10, REFERÊNCIA (copia volume e curva de uma
+               música: botão REF) ou CUSTOM. ALVO (LUFS), TETO (deixe -1,0) e
+               ESTILO (guia o equilíbrio automático de graves e agudos).
+   EQUALIZAÇÃO GRAVES / AGUDOS (AUTO ou manual), MATCH EQ (quanto copiar da
+               referência) e MID/SIDE: "M" mexe só no centro (voz, bumbo,
+               baixo), "S" só nas laterais (guitarras, teclados, reverbs).
+   DINÂMICA    EQ DINÂMICO (EMB = embolado, ASP = aspereza, SIB = sibilância:
+               só abaixa quando passam do normal), MULTIBANDA e COLA.
+   ESTÉREO     MONO BASS (grave em mono abaixo da frequência) e LARGURA.
+   STEMS       Com stems: botão MIXER (fader e mudo de cada uma, exato).
+               Com a mix pronta: VOZ / BATERIA / BAIXO (aproximado, ±2 a 3 dB).
+   LIMITADOR   TRANSPARENTE, PEGADA ou SOFT CLIP, e SATURAÇÃO.
+
+4. PROCESSAR (de 30 s a 2 min por música; stems aproximados é o mais lento).
+5. OUÇA: PLAY (ou barra de espaço). Troque A (original) e B (master) enquanto
+   toca (botões ou teclas A e B): muda na hora, do mesmo ponto. Deixe IGUALAR
+   VOLUME ligado para comparar o som, e não só o volume. Clique na forma de
+   onda para ir a outra parte (ou use ← →).
+   - ANALISADOR: curva de frequências de antes (azul), depois (âmbar) e da
+     referência (tracejada), e o espectro ao vivo do que está tocando.
+   - MEDIDORES: pico L/R, LUFS momentâneo, GR (quanto o limitador está
+     abaixando) e os números de antes/depois.
+   Mudou algum ajuste? O botão vira "PROCESSAR ●": processe de novo para ouvir.
+6. Gostou? SALVAR. O RELATÓRIO mostra tudo o que foi feito e os avisos.
+
+O arquivo sai na MESMA pasta da mix (ou das stems), com "_master" no nome (ex.: Musica_master.wav),
+e um relatório "_master_relatorio.txt" com o antes, o depois e tudo o que foi feito.
+Ele nunca apaga nem substitui um master anterior: o segundo vira "_master_2", etc.
+
+As escolhas ficam salvas para a próxima vez. "Voltar ao padrão" desfaz tudo.
+
+
+DICAS
+-----
+- Comece pelo padrão, ouça, e mexa UMA coisa por vez.
+- Se o relatório disser que o limitador está trabalhando muito, tente um alvo
+  mais baixo (ex.: -12 em vez de -10), a multibanda ou o modo Soft clip.
+- Se a mix chegou clipada, ele avisa: clip não tem conserto no master.
+- Feito para músicas (até uns 15 minutos por arquivo).
+
+
+DEU ERRO?
+---------
+Tire um print da janela (ou da janela preta do Terminal) e mande.

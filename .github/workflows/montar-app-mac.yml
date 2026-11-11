@@ -1,0 +1,63 @@
+# Monta o Masterizador.app (com Python e tudo dentro) num Mac da nuvem do GitHub.
+# Gera duas versões: Apple Silicon (M1 a M4) e Intel. O resultado fica em
+# "Actions" > a execução > "Artifacts".
+name: Montar app do Mac
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  mac:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            nome: AppleSilicon
+          - runner: macos-15-intel
+            nome: Intel
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar bibliotecas
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+
+      - name: Testes rápidos (stems)
+        run: python testes/test_stems_arquivos.py
+
+      - name: Ícone
+        run: |
+          mkdir icone.iconset
+          for s in 16 32 128 256 512; do
+            sips -z $s $s icone.png --out icone.iconset/icon_${s}x${s}.png
+            sips -z $((s*2)) $((s*2)) icone.png --out icone.iconset/icon_${s}x${s}@2x.png
+          done
+          iconutil -c icns icone.iconset -o icone.icns
+
+      - name: Montar o app
+        run: |
+          pyinstaller --noconfirm --windowed --name Masterizador --icon icone.icns \
+            --osx-bundle-identifier com.gabikeys.masterizador \
+            --collect-all sounddevice --collect-all soundfile --collect-data pyloudnorm \
+            janela.py
+
+      - name: Conferir o app (autoteste sem janela)
+        run: dist/Masterizador.app/Contents/MacOS/Masterizador --autoteste
+
+      - name: Compactar
+        run: ditto -c -k --sequesterRsrc --keepParent dist/Masterizador.app "Masterizador-${{ matrix.nome }}.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Masterizador-${{ matrix.nome }}
+          path: Masterizador-${{ matrix.nome }}.zip
+          retention-days: 30

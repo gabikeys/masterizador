@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+build/
+dist/
+*.wav
+*.mp3
+*.aif
+*.aiff
+*.flac
+icone.iconset/
+icone.icns
+*.spec
+p
+pp
+prof
+*.prof
