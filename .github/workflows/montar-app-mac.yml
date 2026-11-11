@@ -1,4 +1,4 @@
-# Monta o Masterizador.app (com Python e tudo dentro) num Mac da nuvem do GitHub.
+# Monta o Masterizador (com Python e tudo dentro) na nuvem do GitHub: Mac e Windows.
 # Gera duas versões: Apple Silicon (M1 a M4, macOS 12.3+) e Intel (macOS 10.13+).
 # O resultado fica em "Actions" > a execução > "Artifacts".
 #
@@ -7,7 +7,7 @@
 #  - as bibliotecas são baixadas com --platform do macOS mínimo, para o pip não
 #    escolher as versões feitas só para macOS 14+;
 #  - no fim, conferimos a versão mínima de macOS de cada binário do app.
-name: Montar app do Mac
+name: Montar apps (Mac e Windows)
 
 on:
   push:
@@ -121,4 +121,53 @@ jobs:
         with:
           name: Masterizador-${{ matrix.nome }}
           path: Masterizador-${{ matrix.nome }}.zip
+          retention-days: 30
+
+  windows:
+    # Versão Windows 10/11 (64 bits): pasta com Masterizador.exe + _internal, zipada.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar bibliotecas
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+
+      - name: Testes rápidos (stems)
+        run: python testes/test_stems_arquivos.py
+
+      - name: Montar o app
+        run: >
+          python -m PyInstaller --noconfirm --windowed --name Masterizador --icon icone.ico
+          --collect-all sounddevice --collect-all soundfile --collect-data pyloudnorm janela.py
+
+      - name: Conferir o app (autoteste sem janela)
+        shell: bash
+        run: |
+          rm -f ~/masterizador_autoteste.txt
+          dist/Masterizador/Masterizador.exe --autoteste || codigo=$?
+          cat ~/masterizador_autoteste.txt
+          exit ${codigo:-0}
+
+      - name: Compactar
+        shell: pwsh
+        run: |
+          @"
+          MASTERIZADOR (Windows)
+          1. Clique com o botão direito no .zip > Extrair Tudo. Não abra de dentro do zip.
+          2. Dois cliques em Masterizador.exe. Se aparecer "O Windows protegeu o computador":
+             Mais informações > Executar assim mesmo.
+          3. Deixe o Masterizador.exe sempre junto da pasta _internal (use um atalho).
+          "@ | Out-File -Encoding utf8 dist/Masterizador/LEIA-ME.txt
+          Compress-Archive -Path dist/Masterizador -DestinationPath Masterizador-Windows.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Masterizador-Windows
+          path: Masterizador-Windows.zip
           retention-days: 30
