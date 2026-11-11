@@ -114,6 +114,8 @@ class App:
         self.stem_ganhos: dict[str, float] = {}
         self.stem_mudos: set[str] = set()
         self.ultima_saida = None
+        self.salvos: list[str] = []
+        self.arq_retorno = None
         self.progresso = 0.0
         self.mixer = None
         self.janela_rel = None
@@ -703,6 +705,7 @@ class App:
             messagebox.showerror("Masterizador", f"Não consegui salvar:\n\n{e}")
             return
         self.ultima_saida = r["saida"]
+        self.salvos.append(r["saida"])
         self.status(f"Salvo: {os.path.basename(r['saida'])} (na pasta da mix).", VERDE)
         if self.janela_rel and self.janela_rel.winfo_exists():
             self.preencher_relatorio()
@@ -1101,6 +1104,13 @@ class App:
 
     def fechar(self):
         self.player.parar()
+        if getattr(self, "arq_retorno", None):  # aberto pelo REAPER (Master Assist): avisa o que foi salvo
+            try:
+                with open(self.arq_retorno + ".tmp", "w", encoding="utf-8") as f:
+                    json.dump({"salvos": self.salvos}, f, ensure_ascii=False)
+                os.replace(self.arq_retorno + ".tmp", self.arq_retorno)
+            except Exception:
+                pass
         self.raiz.destroy()
 
 
@@ -1146,10 +1156,25 @@ def autoteste() -> int:
 def main():
     if "--autoteste" in sys.argv:
         sys.exit(autoteste())
+    # opções de abertura (usadas pelo Master Assist do REAPER):
+    #   --retorno <arquivo>  ao fechar, grava {"salvos": [...]} nesse arquivo
+    #   --titulo <texto>     título da janela
+    args, opcoes, i = sys.argv[1:], {}, 0
+    livres = []
+    while i < len(args):
+        if args[i] in ("--retorno", "--titulo") and i + 1 < len(args):
+            opcoes[args[i][2:]] = args[i + 1]
+            i += 2
+        else:
+            livres.append(args[i])
+            i += 1
     raiz = tk.Tk()
     app = App(raiz)
+    app.arq_retorno = opcoes.get("retorno")
+    if opcoes.get("titulo"):
+        raiz.title(opcoes["titulo"])
     # arquivos passados na linha de comando: já carrega e processa
-    arquivos = [a for a in sys.argv[1:] if os.path.isfile(a)]
+    arquivos = [a for a in livres if os.path.isfile(a)]
     if arquivos:
         app.definir_arquivos(arquivos)
         raiz.after(400, app.iniciar)
