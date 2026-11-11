@@ -1,5 +1,5 @@
 # Monta o Masterizador.app (com Python e tudo dentro) num Mac da nuvem do GitHub.
-# Gera duas versões: Apple Silicon (M1 a M4, macOS 11+) e Intel (macOS 10.13+).
+# Gera duas versões: Apple Silicon (M1 a M4, macOS 12+) e Intel (macOS 10.13+).
 # O resultado fica em "Actions" > a execução > "Artifacts".
 #
 # Compatibilidade com Macs antigos:
@@ -26,8 +26,8 @@ jobs:
         include:
           - runner: macos-15
             nome: AppleSilicon
-            plataforma: macosx_11_0_arm64
-            macos_minimo: "11.0"
+            plataforma: macosx_12_0_arm64
+            macos_minimo: "12.0"
           - runner: macos-15-intel
             nome: Intel
             plataforma: macosx_10_13_x86_64
