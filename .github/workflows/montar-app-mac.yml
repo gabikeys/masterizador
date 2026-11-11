@@ -1,12 +1,22 @@
 # Monta o Masterizador.app (com Python e tudo dentro) num Mac da nuvem do GitHub.
-# Gera duas versões: Apple Silicon (M1 a M4) e Intel. O resultado fica em
-# "Actions" > a execução > "Artifacts".
+# Gera duas versões: Apple Silicon (M1 a M4, macOS 11+) e Intel (macOS 10.13+).
+# O resultado fica em "Actions" > a execução > "Artifacts".
+#
+# Compatibilidade com Macs antigos:
+#  - o Python vem do instalador oficial do python.org (roda desde o macOS 10.13);
+#  - as bibliotecas são baixadas com --platform do macOS mínimo, para o pip não
+#    escolher as versões feitas só para macOS 14+;
+#  - no fim, conferimos a versão mínima de macOS de cada binário do app.
 name: Montar app do Mac
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+
+env:
+  PYTHON_PKG: https://www.python.org/ftp/python/3.12.10/python-3.12.10-macos11.pkg
+  PY: /Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12
 
 jobs:
   mac:
@@ -16,23 +26,35 @@ jobs:
         include:
           - runner: macos-15
             nome: AppleSilicon
+            plataforma: macosx_11_0_arm64
+            macos_minimo: "11.0"
           - runner: macos-15-intel
             nome: Intel
+            plataforma: macosx_10_13_x86_64
+            macos_minimo: "10.13"
     runs-on: ${{ matrix.runner }}
+    env:
+      MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macos_minimo }}
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Instalar bibliotecas
+      - name: Python oficial (python.org)
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt pyinstaller
+          curl -sSL -o python.pkg "$PYTHON_PKG"
+          sudo installer -pkg python.pkg -target /
+          "$PY" --version
+
+      - name: Bibliotecas compatíveis com o macOS mínimo
+        run: |
+          "$PY" -m pip install --upgrade pip
+          "$PY" -m pip download --only-binary=:all: --platform ${{ matrix.plataforma }} \
+            --python-version 3.12 --implementation cp -d rodas -r requirements.txt
+          "$PY" -m pip install --no-index --find-links rodas -r requirements.txt
+          "$PY" -m pip install pyinstaller
+          ls rodas
 
       - name: Testes rápidos (stems)
-        run: python testes/test_stems_arquivos.py
+        run: '"$PY" testes/test_stems_arquivos.py'
 
       - name: Ícone
         run: |
@@ -45,10 +67,49 @@ jobs:
 
       - name: Montar o app
         run: |
-          pyinstaller --noconfirm --windowed --name Masterizador --icon icone.icns \
+          "$PY" -m PyInstaller --noconfirm --windowed --name Masterizador --icon icone.icns \
             --osx-bundle-identifier com.gabikeys.masterizador \
             --collect-all sounddevice --collect-all soundfile --collect-data pyloudnorm \
             janela.py
+          /usr/libexec/PlistBuddy -c "Add :LSMinimumSystemVersion string ${{ matrix.macos_minimo }}" \
+            dist/Masterizador.app/Contents/Info.plist || \
+          /usr/libexec/PlistBuddy -c "Set :LSMinimumSystemVersion ${{ matrix.macos_minimo }}" \
+            dist/Masterizador.app/Contents/Info.plist
+          codesign --force --deep --sign - dist/Masterizador.app
+
+      - name: Conferir a versão mínima de macOS de cada binário
+        run: |
+          "$PY" - <<'EOF'
+          import subprocess, pathlib, re, sys
+          limite = tuple(int(x) for x in "${{ matrix.macos_minimo }}".split("."))
+          piores = []
+          for f in pathlib.Path("dist/Masterizador.app").rglob("*"):
+              if not f.is_file() or f.is_symlink():
+                  continue
+              with open(f, "rb") as h:
+                  if h.read(4) not in (b"\xcf\xfa\xed\xfe", b"\xca\xfe\xba\xbe", b"\xce\xfa\xed\xfe"):
+                      continue
+              out = subprocess.run(["otool", "-l", str(f)], capture_output=True, text=True).stdout
+              vs, cmd = [], ""
+              for linha in out.splitlines():
+                  linha = linha.strip()
+                  if linha.startswith("cmd "):
+                      cmd = linha.split()[1]
+                  m = re.match(r"(minos|version)\s+(\d+)\.(\d+)", linha)
+                  if m and ((cmd == "LC_BUILD_VERSION" and m.group(1) == "minos") or
+                            (cmd == "LC_VERSION_MIN_MACOSX" and m.group(1) == "version")):
+                      vs.append((int(m.group(2)), int(m.group(3))))
+              if vs:
+                  piores.append((max(vs), str(f)))
+          piores.sort(reverse=True)
+          print("binários conferidos:", len(piores))
+          for v, f in piores[:5]:
+              print(f"  exige macOS {v[0]}.{v[1]}: {f}")
+          if piores and piores[0][0] > limite:
+              print(f"ERRO: algum binário exige macOS mais novo que {limite}")
+              sys.exit(1)
+          print(f"OK: tudo roda a partir do macOS {'.'.join(map(str, limite))}")
+          EOF
 
       - name: Conferir o app (autoteste sem janela)
         run: dist/Masterizador.app/Contents/MacOS/Masterizador --autoteste
