@@ -117,10 +117,35 @@ jobs:
       - name: Compactar
         run: ditto -c -k --sequesterRsrc --keepParent dist/Masterizador.app "Masterizador-${{ matrix.nome }}.zip"
 
+      - name: Criar o .dmg (janela com o app, a pasta Aplicativos e as instruções no fundo)
+        run: |
+          brew install create-dmg
+          mkdir dmg_origem
+          cp -R dist/Masterizador.app dmg_origem/
+          DMG="Masterizador-${{ matrix.nome }}.dmg"
+          for tentativa in 1 2 3; do
+            rm -f "$DMG"
+            create-dmg --volname "Masterizador" --background dmg_fundo.png \
+              --window-pos 200 120 --window-size 640 420 --icon-size 96 \
+              --icon "Masterizador.app" 160 200 --hide-extension "Masterizador.app" \
+              --app-drop-link 480 200 "$DMG" dmg_origem && break
+            echo "create-dmg falhou (tentativa $tentativa); tentando de novo"
+            sleep 15
+          done
+          if [ ! -f "$DMG" ]; then
+            echo "sem o layout do Finder: criando o .dmg simples"
+            ln -s /Applications dmg_origem/Aplicativos
+            hdiutil create -volname Masterizador -srcfolder dmg_origem -ov -format UDZO "$DMG"
+          fi
+          hdiutil verify "$DMG"
+          ls -la "$DMG"
+
       - uses: actions/upload-artifact@v4
         with:
           name: Masterizador-${{ matrix.nome }}
-          path: Masterizador-${{ matrix.nome }}.zip
+          path: |
+            Masterizador-${{ matrix.nome }}.zip
+            Masterizador-${{ matrix.nome }}.dmg
           retention-days: 30
 
   windows:
